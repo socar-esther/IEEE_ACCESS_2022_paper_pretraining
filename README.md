@@ -7,7 +7,7 @@ We open our domain benchmark set in [URL](https://socar-kp.github.io/sofar_image
 ## How to run
 - Run the upstream tasks
 ```shell
-$ ./run_upstream.shs
+$ ./run_upstream.sh
 ```
 
 - Run the downstream tasks (car-class classification, car-defect classification)
