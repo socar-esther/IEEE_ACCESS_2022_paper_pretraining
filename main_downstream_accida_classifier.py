@@ -44,10 +44,6 @@ EPOCH = 20
 def load_model(model_name, loss, learning_rate, batch_size, num_workers, regularizer, pretrain=True):
     print('==> Building model..')
     if model_name == 'resnet50_pmg':
-        ## TODO 1: upstream task에 따라 pretrain weight 달라지게 하기
-        ## TODO 2: root 맞춰두기 
-        ## TODO 3: 어떤 pth 파일 로드하는지 확인하는 로그 출력해두기
-        #for upstream_weight_type in upstream_list :
             
         if upstream_weight_type == 'naive':
             print('>> upstream : naive')

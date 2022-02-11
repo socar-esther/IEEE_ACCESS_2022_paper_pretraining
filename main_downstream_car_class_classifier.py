@@ -42,7 +42,6 @@ down_batch_size = 128
 down_learning_rate = 0.000001 # 0.00001, 0.001, 0.000001
 down_weight_decay = 5e-4
 
-# 실험할 dataset 종류
 datasets = [
     '2_class_classification_10p',
 #     '10_class_classification_5p',
@@ -51,8 +50,8 @@ datasets = [
 upstream_weight_types = [
 #     'naive', # done
 #     'imagenet', # done
-#     'stanford-car', # weight 수정 필요
-#     'byol', # weight import 안됨
+#     'stanford-car', 
+#     'byol', 
     'rotation' # done
 ]
 
