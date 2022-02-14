@@ -32,7 +32,7 @@ from utils import *
 device = "cuda:0"
 
 '''
-데이터셋 구조
+Dataset dir (../dataset/)
 ㄴ unlabeled Training 
 ㄴ labeled Training 
 ㄴ labeled Test
@@ -47,7 +47,7 @@ def path_to_train_test_filenames(base_dir, self_train_size, self_test_size, exp_
     print(os.listdir(target_src_path))
     
     for class_name in sorted(os.listdir(target_src_path)):
-        # test 데이터는 class에 따라 다르게 저장해야 한다
+        # test data for each class
         test_filenames_temp = list()
         train_filenames_temp = list()
         
@@ -83,11 +83,11 @@ def move_files(src_filenames, save_dir):
 
         
 def create_byol_set(base_dir, self_train_size, self_test_size, exp_task_type):
-    # Candidate Train, Test Filename 추출
+    # extract candidate Train, Test Filename 
     candidate_train_filenames_unlabeled, candidate_train_filenames, candidate_test_filenames = \
     path_to_train_test_filenames(base_dir, self_train_size, self_test_size, exp_task_type)
     
-    # BYOL dataset 생성
+    # BYOL dataset 
     print('>> Start Making a BYOL Set...')
     save_base = os.path.join(base_dir, 'self_dataset', 'byol_train_size_' + str(self_train_size))
     
@@ -123,16 +123,16 @@ def create_byol_set(base_dir, self_train_size, self_test_size, exp_task_type):
     
 def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs): 
     
-    # 1. dataset, loader 정의
+    # 1. define dataset, loader 
     transform = transforms.Compose([
         transforms.Resize((256, 256)), 
         transforms.ToTensor()
     ])
-    ## byol 학습용 데이터셋
+    ## byol train dataset
     unlabeled_train_dataset = datasets.ImageFolder(unlabeled_train_root, transform)
     unlabeled_train_dataloader = DataLoader(unlabeled_train_dataset,batch_size = 32, shuffle = True)
     
-    ## 검증용 데이터셋
+    ## byol val dataset
     train_dataset = datasets.ImageFolder(train_root, transform)
     train_dataloader = DataLoader(train_dataset, batch_size = 32, shuffle = True)
     
@@ -140,7 +140,7 @@ def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs):
     test_dataloader = DataLoader(test_dataset, batch_size = 32, shuffle = False)
     
     
-    ## byol 학습용 모델
+    ## byol model
     resnet = models.resnet50(pretrained=False) # encoder
 
     learner = BYOL(
@@ -148,7 +148,6 @@ def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs):
         image_size = 256,
         hidden_layer = 'avgpool'
     )
-    ## 검증용 모델, input shape 제대로 맞추기
     output_feature_dim = learner.online_encoder.projector.net[0].in_features
     logreg = LogisticRegression(1000, 10)
     logreg = logreg.to(device)
@@ -175,10 +174,10 @@ def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs):
     optimizer = torch.optim.Adam(logreg.parameters(), lr=3e-4)
     criterion = torch.nn.CrossEntropyLoss()
     
-    # 2. BYOL 학습 
+    # 2. Training BYOL model
     for i in range(num_epochs) :
         print('>> check Training epoch : ', i)
-        # 2_1. 학습
+        # 2_1. start training
         for idx, (img, label) in enumerate(unlabeled_train_dataloader) :
             if idx % 10 == 0 : 
                 print('>> check train idx :', idx)
@@ -188,7 +187,7 @@ def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs):
             opt.step()
             learner.update_moving_average()
         
-        # 2_2. train에서의 성능 확인
+        # 2_2. check the results on training phase
         print('>> Test phase')
         total = 0 
         correct = 0 
@@ -210,8 +209,8 @@ def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs):
         train_acc = 100 * correct/total
         print(f'=> Training accuracy:{train_acc}')
             
-        # 2_2. testset에서의 성능 확인
-        ## feature vector 뽑아오기
+        # 2_2. check the results on test phase
+        ## feature vector
         print('> start inference')
         total = 0
         correct = 0
@@ -228,7 +227,7 @@ def train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs):
         
         print(f"Testing accuracy: {acc}")
             
-        # 3. 모델 저장
+        # 3. save the model
         save_dir = 'self_byol_weight/'
         save_filename = f'self_byol_weight/byol_acc_{acc}.pth'
         print('>> check saved model path : ', save_filename)
