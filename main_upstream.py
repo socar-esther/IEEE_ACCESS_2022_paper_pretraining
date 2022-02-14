@@ -1,4 +1,6 @@
 import os
+import argparse
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,47 +28,58 @@ import PIL.Image as Image
 
 from upstream_modules.self_byol import *
 from upstream_modules.self_rotnet import *
-# from create_self_dataset import *
 
 device = torch.device("cuda:0")
 
-# self_task_type = 'rotnet'
-self_task_type = 'byol' # [rotnet, byol]
-exp_task_type = '10_class_classification' # 2_class_classification ...
-
-dataset_path = '../dataset/'
-
-do_create_pretext_dataset = False
-do_train_self_weight = True
-
-self_train_size = 500
-self_test_size = 100
-
-self_batch_size = 64
-self_n_epochs = 1000
-self_weight_decay_level = 5e-2
-self_learning_rate = 0.00003 # 0.01
-
-# for byol
-unlabeled_train_root = '../dataset/self_dataset/byol_train_size_500/Training_unlabeled/'
-train_root = '../dataset/self_dataset/byol_train_size_500/Training_labeled'
-test_root = '../dataset/self_dataset/byol_train_size_500/Test_labeled'
-num_epochs = 1000
-
-if do_create_pretext_dataset:
+def parse_option() :
     
-    if self_task_type == 'rotnet':
-        create_rotnet_set(dataset_path, self_train_size, self_test_size, exp_task_type)
-
-    elif self_task_type == 'byol':
-        create_byol_set(dataset_path, self_train_size, self_test_size, exp_task_type)
-
-if do_train_self_weight:
+    parser = argparse.ArgumentParser('argument for upstream tasks')
     
-    if self_task_type == 'rotnet':
-        train_rotnet_weight(dataset_path, self_train_size, self_test_size, exp_task_type,\
-                            self_batch_size, self_n_epochs, self_learning_rate, self_weight_decay_level,\
-                            device)
+    parser.add_argument('--self_task_type', type=str, default='byol', help='select the self-supervised task to train', choices=['rotnet', 'byol', 'stanford'])
+    parser.add_argument('--exp_task_type', type=str, default='10_class_classification', help='check the type of the task', choices=['2_class_classification', '10_class_classification'])
+    parser.add_argument('--dataset_path', type=str, default='../dataset/', help='Dataset dir root')
+    parser.add_argument('--do_create_pretext_dataset', type=bool, default=False)
+    parser.add_argument('--do_train_self_weight', type=bool, default=True)
+    
+    parser.add_argument('--self_train_size', type=int, default=500)
+    parser.add_argument('--self_test_size', type=int, default=100)
+    
+    parser.add_argument('--self_batch_size', type=int, default=64)
+    parser.add_argument('--self_n_epochs', type=int, default=1000)
+    parser.add_argument('--self_weight_decay_level', type=float, default=5e-2)
+    parser.add_argument('--self_learning_rate', type=float, default=0.00003)
+    
+    parser.add_argument('--unlabeled_train_root', type=str, default='../dataset/self_dataset/byol_train_size_500/Training_unlabeled/')
+    parser.add_argument('--train_root', type=str, default='../dataset/self_dataset/byol_train_size_500/Training_labeled')
+    parser.add_argument('--test_root', type=str, default='../dataset/self_dataset/byol_train_size_500/Test_labeled')
+    parser.add_argument('--num_epochs', type=int, default=1000)
+    
+    opt = parser.parse_args()
+    
+    return opt
 
-    elif self_task_type == 'byol':
-        train_byol_weight(unlabeled_train_root, train_root, test_root, num_epochs)
+
+def main() : 
+    opt = parse_option()
+
+    if opt.do_create_pretext_dataset:
+
+        if opt.self_task_type == 'rotnet':
+            create_rotnet_set(opt.dataset_path, opt.self_train_size, opt.self_test_size, opt.exp_task_type)
+
+        elif opt.self_task_type == 'byol':
+            create_byol_set(opt.dataset_path, opt.self_train_size, opt.self_test_size, opt.exp_task_type)
+
+    if opt.do_train_self_weight:
+
+        if opt.self_task_type == 'rotnet':
+            train_rotnet_weight(opt.dataset_path, opt.self_train_size, opt.self_test_size, opt.exp_task_type,\
+                                opt.self_batch_size, opt.self_n_epochs, opt.self_learning_rate, opt.self_weight_decay_level,\
+                                device)
+
+        elif opt.self_task_type == 'byol':
+            train_byol_weight(opt.unlabeled_train_root, opt.train_root, opt.test_root, opt.num_epochs)
+            
+            
+if __name__ == '__main__' :
+    main()

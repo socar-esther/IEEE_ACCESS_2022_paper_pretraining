@@ -14,6 +14,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 import pickle
 
 import os
+import argparse
+
 import shutil
 import pandas as pd
 import numpy as np
@@ -30,39 +32,46 @@ import neptune
 
 device = torch.device("cuda:0")
 
-
-'''
-Experiment Configuration
-'''
-
-do_train_downstream_classifier = True
-
-down_n_epochs = 400 # 100 at 10-class
-down_batch_size = 128
-down_learning_rate = 0.000001 # 0.00001, 0.001, 0.000001
-down_weight_decay = 5e-4
-
-datasets = [
+def parse_option() :
+    
+    parser = argparse.ArgumentParser('argument for downstream tasks')
+    parser.add_argument('--do_train_downstream_classifier', type=bool, default=True)
+    parser.add_argument('--down_n_epochs', type=int, default=400)
+    parser.add_argument('--down_batch_size', type=int, default=128)
+    parser.add_argument('--down_learning_rate', type=float, default=0.000001)
+    parser.add_argument('--down_weight_decay', type=float, default=5e-4)
+    opt = parser.parse_args()
+    
+    opt.datasets = [
     '2_class_classification_10p',
-#     '10_class_classification_5p',
-]
+    '10_class_classification_5p',
+    ]
+    
+    opt.upstream_weight_types = [
+        'naive', 
+        'imagenet', 
+        'stanford-car', 
+        'byol', 
+        'rotation' 
+    ]
+    
+    return opt
 
-upstream_weight_types = [
-#     'naive', # done
-#     'imagenet', # done
-#     'stanford-car', 
-#     'byol', 
-    'rotation' # done
-]
 
-if do_train_downstream_classifier:
+def main() :
+    opt = parse_option()
+
+    if opt.do_train_downstream_classifier:
+
+        print('[Notification] Start Training Downstream Classifier!')
+
+        for dataset in opt.datasets:
+            for upstream_weight_type in opt.upstream_weight_types:
+
+                print(dataset, ', ', upstream_weight_type)
+
+                train_downstream_classfier(dataset, upstream_weight_type, opt.down_batch_size, opt.down_n_epochs, opt.down_learning_rate, opt.down_weight_decay, device)
     
-    print('[Notification] Start Training Downstream Classifier!')
-    
-    for dataset in datasets:
-        for upstream_weight_type in upstream_weight_types:
-            
-            print(dataset, ', ', upstream_weight_type)
-            
-            train_downstream_classfier(dataset, upstream_weight_type, down_batch_size, down_n_epochs, down_learning_rate, down_weight_decay, device)
-    
+
+if __name__ == '__main__' :
+    main()

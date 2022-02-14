@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 import random
 import torch
 import torchvision
@@ -28,171 +29,65 @@ from pytorch_lightning.loggers.neptune import NeptuneLogger
 from downstream_modules.downstream_accida_classification import *
 from downstream_modules.accida_classification_utils import *
 
+from utils import load_model
+
 device = "cuda:0"
 
-upstream_weight_type_list = ['imagenet'] # 'rotation', 'naive', 'imagenet', 'stanford-car', 'byol', 'car_class'
-dataset = '2_class_classification'
-BATCH_SIZE = 2 # this will be automatically tuned and increased to best fit your machine.
-NUM_WORKERS = 4
-MODEL_BASE = 'resnet50_pmg'
-LEARNING_RATE = 0.002   # with weight-decay 
-CLASSES = 2
-LOSS= 'ce_vanilla' #options: ce_vanilla, ce_label_smooth, complement, large_margin
-EPOCH = 20
+def parse_option() :
+    
+    parser = argparse.ArgumentParser('argument for downstream task : car-defect classifier')
+    parser.add_argument('--dataset', type=str, default='2_class_classification')
+    parser.add_argument('--batch_size', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--model_base', type=str, default='resnet50_pmg')
+    parser.add_argument('--learning_rate', type=float, default=0.002)
+    parser.add_argument('--classes', type=int, 2)
+    parser.add_argument('--LOSS', type=str, default='ce_vanilla', choices=['ce_vanilla', 'ce_label_smooth', 'complement', 'large_margin'])
+    parser.add_argument('--epoch', type=int, 20)
+    opt = parser.parse_args()
+    
+    opt.upstream_weight_type_list = ['rotation', 'naive', 'imagenet', 'stanford-car', 'byol', 'car_class']
+    
+    return opt
 
-
-def load_model(model_name, loss, learning_rate, batch_size, num_workers, regularizer, pretrain=True):
-    print('==> Building model..')
-    if model_name == 'resnet50_pmg':
-            
-        if upstream_weight_type == 'naive':
-            print('>> upstream : naive')
-            net = resnet50(pretrained=False)
-        
-        elif upstream_weight_type == 'car_class' :
-            print('>> upstream : car_class classification')
-            net = resnet50(pretrained = False)
-            
-            in_features = net.fc.in_features
-            
-            upstream_weight_path = '10class_imagenet_acc_0.91796.pth'
-            
-            net.fc = nn.Sequential(
-                nn.Linear(
-                    in_features,
-                    10 # due to the number of classes at 10_class_classifciation
-                )
-            )
-
-            net.load_state_dict(torch.load(os.path.join('upstream_artifacts/', upstream_weight_path), 
-                                          map_location = device))
-            net.to(device)
-            print('Successfully Loaded the Weight!') 
-
-        elif upstream_weight_type == 'imagenet':
-            print('>> upstream : Imagenet')
-            net = resnet50(pretrained=True)
-
-        elif upstream_weight_type == 'stanford-car':
-            print('>> upstream : stanford_car')
-            upstream_weight_path = 'resnet50_acc91_stanfordcar_pretrain_true.pth'
-
-            if os.path.exists(os.path.join('upstream_artifacts/', upstream_weight_path)):
-                pass
-
-            else:
-                print('[Notification] Downloading ', upstream_weight_type, ' .pth files...')
-
-                if not os.path.exists('upstream_artifacts'):
-                    os.makedirs('upstream_artifacts')
-
-                os.system('gsutil cp gs://socar-data-temp/kp/research_socarvision/artifacts/' + upstream_weight_path + ' ./upstream_artifacts/.')
-                #time.sleep(5) # wait until the download is completed
-
-            net = resnet50(pretrained=False)
-            in_features = net.fc.in_features
-
-
-            net.fc = nn.Linear(
-                in_features,
-                196 # due to the number of classes at stanford-car
-            )
-
-            net.load_state_dict(torch.load(os.path.join('upstream_artifacts/', upstream_weight_path)))
-
-            print('Successfully Loaded the Weight!')
-
-        elif upstream_weight_type == 'byol':
-            print('>> upstream : byol')
-            upstream_weight_path = '2class_resnet50_acc_70_byol_pretrain_true.pth'
-
-            net = resnet50(pretrained=False)
-
-            in_features = net.fc.in_features
-
-            net.load_state_dict(torch.load(os.path.join('upstream_artifacts/', upstream_weight_path)))
-            print('Successfully Loaded the Weight!')
-
-        elif upstream_weight_type == 'rotation':
-            print('>> upstream : rotnet')
-                
-            if dataset == '2_class_classification':    
-                upstream_weight_path = '2class_resnet50_acc90_rotnet_pretrain_true.pth'
-
-
-            if os.path.exists(os.path.join('upstream_artifacts/', upstream_weight_path)):
-                pass
-
-            else:
-                print('[Notification] Downloading ', upstream_weight_type, ' .pth files...')
-
-                if not os.path.exists('upstream_artifacts'):
-                    os.makedirs('upstream_artifacts')
-
-                os.system('gsutil cp gs://socar-data-temp/kp/research_socarvision/artifacts/' + upstream_weight_path + ' ../upstream_artifacts/.')
-                #time.sleep(5) # wait until the download is completed
-
-            net = resnet50(pretrained=False)
-            in_features = net.fc.in_features
-
-            net.fc = nn.Sequential(
-                nn.Linear(
-                    in_features,
-                    4 # due to the number of classes at stanford-car
-                )
-            )
-
-            net.load_state_dict(torch.load(os.path.join('upstream_artifacts/', upstream_weight_path)))
-                    
-            print('Successfully Loaded the Weight!')   
-
-        net = PMG(net, loss=loss, feature_size = 512, classes_num = CLASSES, batch_size=batch_size,
-                  num_workers=num_workers, lr = learning_rate, reg=regularizer, root='custom') ## this should work right?
-
-    return net
-
-
-if __name__ == '__main__' :
+def main() :
+    
+    opt = parse_option()
+    
     torch.manual_seed(0)
     np.random.seed(0)
 
-    for upstream_weight_type in upstream_weight_type_list : 
+    for upstream_weight_type in opt.upstream_weight_type_list : 
         
-        model_name = MODEL_BASE
+        model_name = opt.model_base
         time = datetime.now().strftime('%Y%m%d_%H%M%S')
-        save_dir = 'weights/{}/{}'.format(upstream_weight_type,LOSS)
+        save_dir = 'weights/{}/{}'.format(upstream_weight_type,opt.LOSS)
         reg_type = None
 
-        if LOSS == 'ce_vanilla':
-            print('==> The loss function is set as: ', LOSS)
+        if opt.LOSS == 'ce_vanilla':
+            print('==> The loss function is set as: ', opt.LOSS)
             loss = nn.CrossEntropyLoss()
 
-        elif LOSS == 'ce_label_smooth':
-            print('==> The loss function is set as: ', LOSS)
+        elif opt.LOSS == 'ce_label_smooth':
+            print('==> The loss function is set as: ', opt.LOSS)
             loss = SmoothCrossEntropyLoss()
 
-        elif LOSS == 'large_margin':
+        elif opt.LOSS == 'large_margin':
             loss = nn.CrossEntropyLoss()
             reg_type = 'large_margin'
 
-        elif LOSS == 'complement':
+        elif opt.LOSS == 'complement':
             loss = ComplementCrossEntropy()
 
         else:
             print('====> The LOSS IS NOT SET PROPERLY')
 
-        model = load_model(model_name, loss, LEARNING_RATE, BATCH_SIZE, NUM_WORKERS, pretrain=True, regularizer=reg_type)
+        model = load_model(model_name, loss, opt.learning_rate, opt.batch_size, opt.num_workers, pretrain=True, regularizer=reg_type)
 
         print('The model has {:,} trainable parameters'.format(
             count_parameters(model)))
 
 
-        """
-        ------------------------------------
-        Intialize the trainier from the model and the callbacks
-        # Tensorboard logging: tensorboard --logdir lightning_logs
-        ------------------------------------
-        """
         neptune_logger = NeptuneLogger(
         api_key = 'eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiMDhiZWJiMjctNTk5YS00YzM0LWI4NjAtYmY2NjZlMWYwOTk5In0=',
         project_name = "esther/sandbox"
@@ -210,14 +105,14 @@ if __name__ == '__main__' :
             dirpath=save_dir, monitor='val_acc_en', mode = 'auto', save_last=True,    filename='{epoch:02d}-{val_acc:.4f}_{upstream_weight_type}')
 
 
-        csv_logger = CSVLogger('csv_log/{}'.format(time), name = '{}_model'.format(LOSS))
-        tensorboard_logger = TensorBoardLogger('tb_log/{}'.format(time),    name='{}_model'.format(LOSS))
+        csv_logger = CSVLogger('csv_log/{}'.format(time), name = '{}_model'.format(opt.LOSS))
+        tensorboard_logger = TensorBoardLogger('tb_log/{}'.format(time),    name='{}_model'.format(opt.LOSS))
 
         # use resume_from_checkpoint
         # resume_point = 'weights/20201201_180420/ce_label_smooth/last.ckpt'
 
         trainer = pl.Trainer(auto_scale_batch_size='power', callbacks=[bar, ckpt_en, ckpt_reg],
-                          max_epochs=EPOCH, gpus=1, precision=16, logger = [neptune_logger, csv_logger])
+                          max_epochs=opt.epoch, gpus=1, precision=16, logger = [neptune_logger, csv_logger])
 
         print('==> Starting the training process now...')
         trainer.tune(model) 
