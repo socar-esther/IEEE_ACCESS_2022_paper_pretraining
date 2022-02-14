@@ -36,7 +36,6 @@ def jigsaw_generator(images, n):
 
     return jigsaws
 
-# lightening module에서 사용 위해 PMG 모듈에서 변경함 
 class BasicConv(pl.LightningModule):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1, groups=1, relu=True, bn=True, bias=False):
         super(BasicConv, self).__init__()
