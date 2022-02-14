@@ -26,25 +26,11 @@ import PIL.Image as Image
 
 from utils import *
 
-'''
-rotation, byol에 공통적으로 들어가는 function
 
-> input
-- base_dir; dataset path (main에서 전달해줌)
-- self_train_size; self supervision task에 필요한 train set size
-- self_test_size; self supervision task에 필요한 test set size
-- exp_task_type; # 2_class, 10_class 등
-
-> output
-- candidate_train_filenames; train으로 이용할 파일 이름들 
-- candidate_test_filenames; test로 이용할 파일 이름들
-
-'''
 def path_to_train_test_filenames(base_dir, self_train_size, self_test_size, exp_task_type):
     candidate_train_filenames = list()
     candidate_test_filenames = list()
     
-    # 각 Class 별로 파일 이름 모으고
     target_src_path = os.path.join(base_dir, exp_task_type, 'Training')
     print('>>>>>>', target_src_path)
     print(os.listdir(target_src_path))
@@ -68,16 +54,14 @@ def path_to_train_test_filenames(base_dir, self_train_size, self_test_size, exp_
     
     return candidate_train_filenames, candidate_test_filenames
 
-'''
->> Rotation Prediction Task 용 데아터셋 생성
-'''
+
 def create_rotnet_set(base_dir, self_train_size, self_test_size, exp_task_type):
     
-    # Candidate Train, Test Filename 추출
+    # extract Candidate Train, Test Filename 
     candidate_train_filenames, candidate_test_filenames = \
     path_to_train_test_filenames(base_dir, self_train_size, self_test_size, exp_task_type)
     
-    # Rotation 수행
+    # start Rotation task 
     print('>> Start Making a Rotated Set...')
     save_base = os.path.join(base_dir, 'self_dataset', 'rotnet_' + exp_task_type + '_train_size_' + str(self_train_size))
     
