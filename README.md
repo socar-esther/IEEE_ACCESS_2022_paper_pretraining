@@ -9,11 +9,11 @@ Implementation of "Discovering the Effectiveness of Pre-Training for Image Recog
 ```shell
 $ ./run_upstream.sh
 ```
-- Here is the sample command line to run the downstream tasks
+- Sample command line to run the downstream tasks 
 ```shell
 $ ./run_downstream.sh
 ```
-- Run the CKA modules to check the layerwise similarity of the representations
+- Sample command line to run the layer-wise CKA modules
 ```shell
 $ python CKA-Centered-Kernel-Alignment/cka_main.py  # check the layerwise CKA 
 $ python CKA-Centered-Kernel-Alignment/cka_lower_layer_higher.py # check the CKA of lower & higher layer
