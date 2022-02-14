@@ -45,7 +45,7 @@ def train_downstream_classfier(dataset, upstream_weight_type, batch_size, n_epoc
     'eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiOWNlZmJkMDYtODI2Ny00NWM5LTkwZmQtYjUxMDFmM2FlYWU0In0='
     )
 
-    # 실험 생성
+    # create the experiment
     experiment_object = neptune.create_experiment(
         name='socarvision',
     )
