@@ -28,7 +28,7 @@ from pytorch_lightning.loggers.neptune import NeptuneLogger
 
 device = "cuda:0"
 
-## PMG 모델 정의
+## define PMG model
 class PMG(pl.LightningModule):
 
     def __init__(self, model, feature_size, lr, loss, classes_num, reg, batch_size=8, num_workers=6, root='car_data'):
