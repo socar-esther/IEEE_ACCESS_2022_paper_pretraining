@@ -1,6 +1,3 @@
-# 2개의 모델에 대해서 찍되, 히트맵이 아니라, (mean, std)값을 뱉도록 하기
-# 결과를 어떻게 저장할지 생각해보기
-
 import pickle
 import random
 import gc
@@ -34,7 +31,7 @@ import matplotlib.pyplot as plt
 
 device = "cuda:0" 
 
-# seed 고정 (학습때와 동일하게)
+# fix seed
 manual_seed = 42
 print("Random Seed: ", manual_seed)
 random.seed(manual_seed)
@@ -59,10 +56,9 @@ def test_dataloader():
 
 
 if __name__ == "__main__" :
-    # 사용할 데이터셋
+    # Get dataset
     image_datasets, dataloaders = test_dataloader()
     
-    # 현재 있는 upstream weight 전부 사용해서 cka찍어보기
     for model_nm_1 in os.listdir('models_activations/socarvision_Upstream/upstream/') :
         if 'ipynb' in model_nm_1 : 
             continue
@@ -99,10 +95,10 @@ if __name__ == "__main__" :
         net1 = net1.to(device)
         net1 = net1.eval()
         
-        # net1에 register hook 등록
-        count = 0        # 예외 레이어를 지정하기 위한 변수
-        local_count = 0  # feature을 리스트에 저장하기 위한 변수
-        global_count = 0 # 전체 레이어수를 세기 위한 변수 (for max pooling)
+        # register hook to the net1
+        count = 0        
+        local_count = 0  
+        global_count = 0 
         feature_count = 0 
         
         layer_name_list = list()
@@ -113,16 +109,13 @@ if __name__ == "__main__" :
             return hook
 
         for layer in net1.modules() :
-            # conv2d인 레이어에 대해서만 layer output 가져오는 형식
-    
-            # 두번째에 있는 max pooling도 가져오기
+
             if global_count == 1 : 
 #                 layer_name_list.append(layer)
 #                 layer.register_forward_hook(get_features(str(feature_count)))
 #                 feature_count += 1
                 local_count += 1
         
-            # 여기서 제외할 4개 레이어 지정
             if isinstance(layer, torch.nn.modules.conv.Conv2d) :
                 count += 1
                 if count != 4 and count != 14 and count !=27 and count != 46 :
@@ -130,14 +123,12 @@ if __name__ == "__main__" :
                         #print('>> check layer name : ', layer)
                         layer_name_list.append(layer)
         
-                        # 등록된 hook가 있는 모든 레이어에 대해서 저장하는 방식을 사용하되 레이어 이름별로 저장
                         layer.register_forward_hook(get_features(str(feature_count)))
                         feature_count += 1
                     local_count += 1
             global_count += 1
         #print('>> check layer number : ', len(layer_name_list))
-        
-        # 첫번째 모델의 conv layer output 값 전부 리스트(=features_list)에 저장
+
         start_time = time.time()
         features_list = list() 
 
@@ -148,18 +139,15 @@ if __name__ == "__main__" :
             feats_all_list = list()
 
             for idx, (img, label) in tqdm(enumerate(dataloaders)) :
-                # Accida test와 동일한 데이터 사용
                 img = img.to(device)
                 label = label.to(device)
     
-                # feature 저장할 딕셔너리 지정
                 features = dict()
                 preds = net1(img)
     
                 preds_all_list.append(preds.detach().cpu().numpy())
                 feats_all_list.append(features[str(i)].cpu().numpy()) 
     
-            # layer output값을 뽑아낸 다음 shape에 따라 지정
             features = np.empty((50,feats_all_list[0].shape[1] ,feats_all_list[0].shape[2] ,feats_all_list[0].shape[3]), dtype='float32')
     
             #print('>> check array shape : ', feats_all_list[0].shape)
@@ -175,9 +163,8 @@ if __name__ == "__main__" :
             #print('- feats layer shape :', features.shape, f'in layer {i}')
     
         #print('-- durting time : ', time.time() - start_time)
-        # 각 레이어별로 CKA input값으로 들어가는 값은 feature_list_{layer_num}으로 저장되고 있음 (할당하고 저장하는 방식사용)
         
-        # residual memory 정리
+        # residual memory
         gc.collect()
 
         for model_nm_2 in os.listdir('models_activations/socarvision_Upstream/upstream/') : 
@@ -226,10 +213,10 @@ if __name__ == "__main__" :
                 net2 = net2.eval()
             
             
-                # net2에 대해 register hook 등록
-                count = 0        # 예외 레이어를 지정하기 위한 변수
-                local_count = 0  # feature을 리스트에 저장하기 위한 변수
-                global_count = 0 # 전체 레이어수를 세기 위한 변수 (for max pooling)
+                # register hook to the net2
+                count = 0        
+                local_count = 0 
+                global_count = 0 
                 feature_count = 0
             
                 layer_name_list_2 = list() 
@@ -240,16 +227,13 @@ if __name__ == "__main__" :
                     return hook
 
                 for layer in net2.modules() :
-                    # conv2d인 레이어에 대해서만 layer output 가져오는 형식
-    
-                    # 두번째에 있는 Max pooling도 가져오기
+ 
                     if global_count == 1 : 
 #                         layer_name_list_2.append(layer)
 #                         layer.register_forward_hook(get_features(str(feature_count)))
                         local_count +=1 
 #                         feature_count += 1
     
-                    # 여기서 제외할 4개의 레이어 지정 
                     if isinstance(layer, torch.nn.modules.conv.Conv2d) :
                         count += 1
                         if count != 4 and count != 14 and count !=27 and count != 46 :
@@ -257,15 +241,13 @@ if __name__ == "__main__" :
                                 #print('>> check layer name : ', layer)
                                 layer_name_list_2.append(layer)
         
-                                # 등록된 hook가 있는 모든 레이어에 대해서 저장하는 방식을 사용하되 레이어 이름별로 저장
                                 layer.register_forward_hook(get_features(str(feature_count)))
                                 feature_count += 1
                             local_count += 1
                     global_count += 1
         
                 #print('>> check layer number : ', len(layer_name_list_2))
-            
-                # 두번째 모델의 conv layer output 값 전부 리스트(=features_list)에 저장
+
                 start_time = time.time()
                 features_list_2 = list() 
 
@@ -276,18 +258,15 @@ if __name__ == "__main__" :
                     feats_all_list = list()
 
                     for idx, (img, label) in tqdm(enumerate(dataloaders)) :
-                        # Accida test와 동일한 데이터 사용
                         img = img.to(device)
                         label = label.to(device)
     
-                        # feature 저장할 딕셔너리 지정
                         features = dict()
                         preds = net2(img)
     
                         preds_all_list.append(preds.detach().cpu().numpy())
                         feats_all_list.append(features[str(i)].cpu().numpy()) 
     
-                    # layer output값을 뽑아낸 다음 shape에 따라 지정
                     features = np.empty((50,feats_all_list[0].shape[1] ,feats_all_list[0].shape[2] ,feats_all_list[0].shape[3]), dtype='float32')
     
                     #print('>> check array shape : ', feats_all_list[0].shape)
@@ -303,8 +282,6 @@ if __name__ == "__main__" :
                     #print('- feats layer shape :', features.shape, f'in layer {i}')
 
                 #print('-- durting time : ', time.time() - start_time)
-                # 각 레이어별로 CKA input값으로 들어가는 값은 feature_list_{layer_num}으로 저장되고 있음 (할당하고 저장하는 방식사용)
-                # 받아온 두 모델의 50개의 값 기반으로 score 찍기
                 cka_all_scores = np.zeros((6, 6), dtype = 'float32')
                 start_time = time.time()
 
@@ -320,10 +297,8 @@ if __name__ == "__main__" :
                         shape = features_list_2[j].shape
                         activationB = np.reshape(features_list_2[j], newshape = (shape[0], np.prod(shape[1:])))
         
-                        # linear cka값 연산
+                        # linear cka
                         cka = kernel_CKA(activationA, activationB)
-        
-                        # all_score에 값 저장
                         cka_all_scores[i][j] = cka
 
                 #print('Duration time : ', time.time() - start_time)
@@ -332,7 +307,6 @@ if __name__ == "__main__" :
                 print('>> check std :', np.std(cka_all_scores))
                 print('>> check all cka scores :', cka_all_scores)
                 
-                # 값 저장 (아카이빙용도)
                 with open(f'higher_lower_outputs/higher_upstream/{model_nm_1}_{model_nm_2}.pkl', 'wb') as f : 
                     pickle.dump(cka_all_scores, f)
                 
