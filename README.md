@@ -1,4 +1,4 @@
-# kdd 2022 paper 1675
+# Discovering the Effectiveness of Pre-Training for Image Recognition in a Large-scale Car Sharing Platform (paper 1675 in KDD 2022 Research Track)
 Implementation of the submission to KDD'22: "Discovering the Effectiveness of Pre-Training for Image Recognition in a Large-scale Car-sharing Platform"
 
 ## Paper Abstract
